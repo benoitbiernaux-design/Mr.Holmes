@@ -20,6 +20,21 @@ def safe_name(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", value)
 
 
+def pdf_safe(text: str) -> str:
+    replacements = {
+        "•": "-",
+        "—": "-",
+        "–": "-",
+        "“": '"',
+        "”": '"',
+        "’": "'",
+        "…": "...",
+    }
+    for src, dst in replacements.items():
+        text = text.replace(src, dst)
+    return text
+
+
 def query_txt(name: str) -> List[str]:
     try:
         answers = dns.resolver.resolve(name, "TXT")
@@ -128,12 +143,12 @@ class ReportPDF(FPDF):
         self.rect(self.l_margin, self.get_y(), self._full_width(), 9, style="F")
         self.set_xy(self.l_margin + 3, self.get_y() + 1.5)
         self.set_font("Helvetica", "B", 12)
-        self.cell(self._full_width() - 6, 6, title, new_x="LMARGIN", new_y="NEXT")
+        self.cell(self._full_width() - 6, 6, pdf_safe(title), new_x="LMARGIN", new_y="NEXT")
         if subtitle:
             self.set_x(self.l_margin + 3)
             self.set_font("Helvetica", "", 9)
             self.set_text_color(95, 95, 95)
-            self.multi_cell(self._full_width() - 6, 5, subtitle)
+            self.multi_cell(self._full_width() - 6, 5, pdf_safe(subtitle))
             self.set_text_color(20, 20, 20)
         self.ln(1)
 
@@ -146,22 +161,22 @@ class ReportPDF(FPDF):
             self.rect(self.l_margin + label_w, y, value_w, 8)
             self.set_xy(self.l_margin + 2, y + 1.5)
             self.set_font("Helvetica", "B", 10)
-            self.cell(label_w - 4, 5, label)
+            self.cell(label_w - 4, 5, pdf_safe(label))
             self.set_xy(self.l_margin + label_w + 2, y + 1.5)
             self.set_font("Helvetica", "", 10)
-            self.cell(value_w - 4, 5, value)
+            self.cell(value_w - 4, 5, pdf_safe(value))
             self.ln(8)
         self.ln(2)
 
     def bullet_lines(self, items: List[str], empty_text: str = "No data found."):
         self.set_font("Helvetica", "", 10)
         if not items:
-            self.multi_cell(self._full_width(), 6, empty_text)
+            self.multi_cell(self._full_width(), 6, pdf_safe(empty_text))
             self.ln(1)
             return
         for item in items:
             self.set_x(self.l_margin + 1)
-            self.multi_cell(self._full_width() - 1, 6, f"• {item}")
+            self.multi_cell(self._full_width() - 1, 6, pdf_safe(f"- {item}"))
         self.ln(1)
 
     def note(self, text: str):
@@ -171,13 +186,13 @@ class ReportPDF(FPDF):
         self.set_xy(self.l_margin + 3, y + 2)
         self.set_font("Helvetica", "I", 9)
         self.set_text_color(90, 90, 90)
-        self.multi_cell(self._full_width() - 6, 4.5, text)
+        self.multi_cell(self._full_width() - 6, 4.5, pdf_safe(text))
         self.set_text_color(20, 20, 20)
         self.ln(1)
 
     def body_text(self, text: str):
         self.set_font("Helvetica", "", 9)
-        self.multi_cell(self._full_width(), 4.5, text)
+        self.multi_cell(self._full_width(), 4.5, pdf_safe(text))
         self.ln(1)
 
 
@@ -217,7 +232,7 @@ def main() -> int:
             f.write(f"- {label}: {value}\n")
         f.write("\nMX Records\n")
         for pref, exch in mx:
-            f.write(f"- {pref} {exch}\n")
+            f.write(f"- Priority {pref} - {exch}\n")
         f.write("\nA Records\n")
         for row in a_records:
             f.write(f"- {row}\n")
@@ -249,7 +264,7 @@ def main() -> int:
     pdf.key_value_rows(rows)
 
     pdf.section("Mail routing", "MX records show where the domain receives mail.")
-    pdf.bullet_lines([f"Priority {pref} — {exch}" for pref, exch in mx], empty_text="No MX records found.")
+    pdf.bullet_lines([f"Priority {pref} - {exch}" for pref, exch in mx], empty_text="No MX records found.")
 
     pdf.section("Public IP exposure", "A records map the domain to public IPv4 addresses.")
     pdf.bullet_lines(a_records, empty_text="No A records found.")
