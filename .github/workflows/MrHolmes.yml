@@ -1,0 +1,44 @@
+name: Run MrHolmes Email Lookup
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "Email a analyser"
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Show selected email
+        run: echo "Email = ${{ github.event.inputs.email }}"
+
+      - name: Placeholder
+        run: |
+          echo "Il faut ici brancher le module email de Mr.Holmes avec l'adresse : ${{ github.event.inputs.email }}"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mrholmes-email-results
+          path: GUI/Reports/
+          if-no-files-found: ignore
