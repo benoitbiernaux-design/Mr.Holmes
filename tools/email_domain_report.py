@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import os
 import re
 import subprocess
 from datetime import datetime, timezone
@@ -76,33 +75,37 @@ def common_dkim(domain: str) -> List[str]:
 
 
 class ReportPDF(FPDF):
+    def _full_width(self) -> float:
+        return self.w - self.l_margin - self.r_margin
+
     def header(self):
         self.set_font("Helvetica", "B", 14)
-        self.cell(0, 10, "Email & Domain Technical Report", new_x="LMARGIN", new_y="NEXT")
+        self.cell(self._full_width(), 10, "Email & Domain Technical Report", new_x="LMARGIN", new_y="NEXT")
         self.set_font("Helvetica", "", 9)
-        self.cell(0, 6, datetime.now(timezone.utc).strftime("Generated on %Y-%m-%d %H:%M UTC"), new_x="LMARGIN", new_y="NEXT")
+        self.cell(self._full_width(), 6, datetime.now(timezone.utc).strftime("Generated on %Y-%m-%d %H:%M UTC"), new_x="LMARGIN", new_y="NEXT")
         self.ln(2)
 
     def footer(self):
         self.set_y(-12)
         self.set_font("Helvetica", "I", 8)
-        self.cell(0, 10, f"Page {self.page_no()}", align="C")
+        self.cell(self._full_width(), 10, f"Page {self.page_no()}", align="C")
 
     def section(self, title: str):
         self.set_font("Helvetica", "B", 12)
-        self.cell(0, 8, title, new_x="LMARGIN", new_y="NEXT")
+        self.cell(self._full_width(), 8, title, new_x="LMARGIN", new_y="NEXT")
         self.set_font("Helvetica", "", 10)
 
     def lines(self, items: List[str]):
         if not items:
-            self.multi_cell(0, 6, "No data found.")
+            self.multi_cell(self._full_width(), 6, "No data found.")
+            self.ln(1)
             return
         for item in items:
-            self.multi_cell(0, 6, f"- {item}")
+            self.multi_cell(self._full_width(), 6, f"- {item}")
         self.ln(1)
 
     def block(self, text: str):
-        self.multi_cell(0, 5, text)
+        self.multi_cell(self._full_width(), 5, text)
         self.ln(1)
 
 
@@ -126,13 +129,14 @@ def main() -> int:
     dkim = common_dkim(domain) if domain else []
     whois_text = run_whois(domain) if domain else "WHOIS unavailable because the domain could not be parsed."
 
-    summary = []
-    summary.append(f"Email format valid: {'Yes' if valid else 'No'}")
-    summary.append(f"Domain parsed: {domain or 'No'}")
-    summary.append(f"MX records found: {len(mx)}")
-    summary.append(f"SPF record found: {'Yes' if spf else 'No'}")
-    summary.append(f"DMARC record found: {'Yes' if dmarc else 'No'}")
-    summary.append(f"Common DKIM selectors found: {len(dkim)}")
+    summary = [
+        f"Email format valid: {'Yes' if valid else 'No'}",
+        f"Domain parsed: {domain or 'No'}",
+        f"MX records found: {len(mx)}",
+        f"SPF record found: {'Yes' if spf else 'No'}",
+        f"DMARC record found: {'Yes' if dmarc else 'No'}",
+        f"Common DKIM selectors found: {len(dkim)}",
+    ]
 
     txt_report = out_dir / f"{safe_name(email)}_report.txt"
     pdf_report = out_dir / f"{safe_name(email)}_report.pdf"
